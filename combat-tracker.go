@@ -424,9 +424,82 @@ func ClearScreen() {
 // DisplayMenuHorizontal displays the menu options horizontally
 func DisplayMenuHorizontal() {
 	fmt.Println("\n====================== COMMANDS ======================")
-	fmt.Print("1:Add  2:Start  3:Next  4:HP  5:TempHP  6:AddStatus  ")
-	fmt.Println("7:RemStatus  8:Display  9:End  10:Details  11:Save  12:Load  0:Exit")
+	fmt.Println("1:Add        2:Start     3:Next      4:HP         5:TempHP")
+	fmt.Println("6:AddStatus  7:RemStatus 8:Display   9:End       10:Details")
+	fmt.Println("11:Save      12:Load     13:Duplicate 14:Change Initiative")
+	fmt.Println("0:Exit")
 	fmt.Println("======================================================")
+}
+
+// DuplicateCombatant creates multiple copies of a combatant with incremented names
+func (ct *CombatTracker) DuplicateCombatant(index int, count int) {
+	if index < 0 || index >= len(ct.Combatants) {
+		fmt.Println("Invalid combatant index!")
+		return
+	}
+
+	original := ct.Combatants[index]
+	baseName := original.Name
+
+	// Find the last number in the name if it exists
+	lastNumber := 0
+	if len(baseName) > 0 {
+		// Try to find a number at the end of the name
+		for i := len(baseName) - 1; i >= 0; i-- {
+			if baseName[i] >= '0' && baseName[i] <= '9' {
+				lastNumber = lastNumber*10 + int(baseName[i]-'0')
+			} else {
+				break
+			}
+		}
+		// Remove the number from the base name if it exists
+		if lastNumber > 0 {
+			baseName = strings.TrimRight(baseName, "0123456789")
+		}
+	}
+
+	// Create copies with incremented names
+	for i := 0; i < count; i++ {
+		newName := fmt.Sprintf("%s%d", baseName, lastNumber+i+1)
+		combatant := Combatant{
+			Name:          newName,
+			Initiative:    original.Initiative,
+			MaxHP:         original.MaxHP,
+			CurrentHP:     original.MaxHP,
+			IsPlayer:      original.IsPlayer,
+			IsConscious:   true,
+			TemporaryHP:   0,
+			StatusEffects: []string{},
+		}
+		ct.Combatants = append(ct.Combatants, combatant)
+		fmt.Printf("Created %s\n", newName)
+	}
+
+	// Auto-save state
+	ct.AutoSave()
+}
+
+// ChangeInitiative updates a combatant's initiative value
+func (ct *CombatTracker) ChangeInitiative(index int, newInitiative int) {
+	if index < 0 || index >= len(ct.Combatants) {
+		fmt.Println("Invalid combatant index!")
+		return
+	}
+
+	c := &ct.Combatants[index]
+	oldInitiative := c.Initiative
+	c.Initiative = newInitiative
+
+	fmt.Printf("%s's initiative changed from %d to %d\n", c.Name, oldInitiative, newInitiative)
+
+	// If combat is active, re-sort combatants
+	if ct.IsActive {
+		ct.SortByInitiative()
+		fmt.Println("Combat order updated.")
+	}
+
+	// Auto-save state
+	ct.AutoSave()
 }
 
 func main() {
@@ -750,6 +823,86 @@ func main() {
 				ct = loadedCT
 				fmt.Println("Combat state loaded successfully!")
 			}
+
+		case "13": // Duplicate Combatant
+			var index, count int
+
+			fmt.Println("=== DUPLICATE COMBATANT ===")
+			ct.DisplayCombatState()
+
+			// If combat is active, show current player and use as default
+			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
+				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
+			}
+
+			fmt.Print("Enter combatant number to duplicate (press Enter for current player): ")
+			scanner.Scan()
+			indexStr := scanner.Text()
+
+			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				// Use current player if no input and combat is active
+				index = ct.CurrentTurnIdx
+			} else {
+				index, _ = strconv.Atoi(indexStr)
+				index-- // Convert to 0-based index
+			}
+
+			// Validate index
+			if index < 0 || index >= len(ct.Combatants) {
+				fmt.Println("Invalid combatant index!")
+				continue
+			}
+
+			fmt.Print("Enter number of copies to create: ")
+			scanner.Scan()
+			count, err := strconv.Atoi(scanner.Text())
+			if err != nil || count < 1 {
+				fmt.Println("Invalid number of copies!")
+				continue
+			}
+
+			ct.DuplicateCombatant(index, count)
+
+		case "14": // Change Initiative
+			var index, newInitiative int
+
+			fmt.Println("=== CHANGE INITIATIVE ===")
+			ct.DisplayCombatState()
+
+			// If combat is active, show current player and use as default
+			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
+				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
+			}
+
+			fmt.Print("Enter combatant number (press Enter for current player): ")
+			scanner.Scan()
+			indexStr := scanner.Text()
+
+			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				// Use current player if no input and combat is active
+				index = ct.CurrentTurnIdx
+			} else {
+				index, _ = strconv.Atoi(indexStr)
+				index-- // Convert to 0-based index
+			}
+
+			// Validate index
+			if index < 0 || index >= len(ct.Combatants) {
+				fmt.Println("Invalid combatant index!")
+				continue
+			}
+
+			fmt.Print("Enter new initiative value: ")
+			scanner.Scan()
+			newInitiative, err := strconv.Atoi(scanner.Text())
+			if err != nil {
+				fmt.Println("Invalid initiative value!")
+				continue
+			}
+
+			ct.ChangeInitiative(index, newInitiative)
 
 		case "0": // Exit
 			fmt.Println("Exiting D&D Combat Tracker. Farewell, adventurer!")
