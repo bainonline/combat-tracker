@@ -69,6 +69,8 @@ The tracker provides a text-based interface with the following commands:
 10. **Details**: Set campaign and encounter names
 11. **Save**: Manually save the state to a file
 12. **Load**: Load a previously saved state
+13. **Duplicate**: Create multiple copies of a combatant
+14. **Change Initiative**: Update a combatant's initiative value
 0. **Exit**: Quit the application
 
 ## Combat Display
@@ -135,3 +137,9 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 - Inspired by the needs of D&D Dungeon Masters everywhere
 - Built with love for the tabletop gaming community
+
+## Example Combat Session
+
+Here's an example of how to use each command in a typical combat session:
+
+### 1. Adding Combatants
