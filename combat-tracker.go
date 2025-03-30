@@ -502,6 +502,45 @@ func (ct *CombatTracker) ChangeInitiative(index int, newInitiative int) {
 	ct.AutoSave()
 }
 
+// getCurrentOrSelectedIndex gets the index of either the current player or a user-selected combatant
+func getCurrentOrSelectedIndex(ct *CombatTracker, scanner *bufio.Scanner, prompt string) (int, error) {
+	if ct.IsActive && ct.CurrentTurnIdx >= 0 {
+		currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
+		fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
+	}
+
+	if prompt == "" {
+		prompt = "Enter combatant number (press Enter for current player): "
+	}
+	fmt.Print(prompt)
+	scanner.Scan()
+	indexStr := scanner.Text()
+
+	var index int
+	if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
+		index = ct.CurrentTurnIdx
+	} else {
+		var err error
+		index, err = strconv.Atoi(indexStr)
+		if err != nil {
+			return -1, fmt.Errorf("invalid number entered")
+		}
+		index-- // Convert to 0-based index
+	}
+
+	// Validate index
+	if index < 0 || index >= len(ct.Combatants) {
+		return -1, fmt.Errorf("invalid combatant index")
+	}
+
+	return index, nil
+}
+
+// displayCommandHeader displays a formatted header for each command
+func displayCommandHeader(title string) {
+	fmt.Printf("\n=== %s ===\n", strings.ToUpper(title))
+}
+
 func main() {
 	var ct *CombatTracker
 
@@ -576,181 +615,16 @@ func main() {
 			ct.NextTurn()
 
 		case "4": // Damage/Heal
-			var index, amount int
-
-			fmt.Println("=== ADJUST HIT POINTS ===")
-			ct.DisplayCombatState()
-
-			// If combat is active, show current player and use as default
-			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
-				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
-			}
-
-			fmt.Print("Enter combatant number (press Enter for current player): ")
-			scanner.Scan()
-			indexStr := scanner.Text()
-
-			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				// Use current player if no input and combat is active
-				index = ct.CurrentTurnIdx
-			} else {
-				index, _ = strconv.Atoi(indexStr)
-				index-- // Convert to 0-based index
-			}
-
-			fmt.Print("Enter amount (+heal, -damage): ")
-			scanner.Scan()
-			amount, _ = strconv.Atoi(scanner.Text())
-
-			ct.AdjustHP(index, amount)
+			handleAdjustHP(ct, scanner)
 
 		case "5": // Add Temporary HP
-			var index, amount int
-
-			fmt.Println("=== ADD TEMPORARY HP ===")
-			ct.DisplayCombatState()
-
-			// If combat is active, show current player and use as default
-			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
-				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
-			}
-
-			fmt.Print("Enter combatant number (press Enter for current player): ")
-			scanner.Scan()
-			indexStr := scanner.Text()
-
-			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				// Use current player if no input and combat is active
-				index = ct.CurrentTurnIdx
-			} else {
-				index, _ = strconv.Atoi(indexStr)
-				index-- // Convert to 0-based index
-			}
-
-			// Validate index
-			if index < 0 || index >= len(ct.Combatants) {
-				fmt.Println("Invalid combatant index!")
-				continue
-			}
-
-			fmt.Print("Enter temporary HP amount: ")
-			scanner.Scan()
-			amount, _ = strconv.Atoi(scanner.Text())
-
-			ct.AddTemporaryHP(index, amount)
+			handleAddTempHP(ct, scanner)
 
 		case "6": // Add Status Effect
-			var index int
-			var effect string
-
-			fmt.Println("=== ADD STATUS EFFECT ===")
-			ct.DisplayCombatState()
-
-			// If combat is active, show current player and use as default
-			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
-				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
-			}
-
-			fmt.Print("Enter combatant number (press Enter for current player): ")
-			scanner.Scan()
-			indexStr := scanner.Text()
-
-			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				// Use current player if no input and combat is active
-				index = ct.CurrentTurnIdx
-			} else {
-				index, _ = strconv.Atoi(indexStr)
-				index-- // Convert to 0-based index
-			}
-
-			// Validate index
-			if index < 0 || index >= len(ct.Combatants) {
-				fmt.Println("Invalid combatant index!")
-				continue
-			}
-
-			fmt.Printf("\nSelect status effect for %s:\n", ct.Combatants[index].Name)
-			fmt.Println("0. Custom Status Effect")
-			for i, effect := range ct.StatusEffects {
-				fmt.Printf("%d. %s\n", i+1, effect)
-			}
-
-			fmt.Print("\nEnter number of status effect (or 0 for custom): ")
-			scanner.Scan()
-			effectIndex, err := strconv.Atoi(scanner.Text())
-			if err != nil || effectIndex < 0 || effectIndex > len(ct.StatusEffects) {
-				fmt.Println("Invalid selection!")
-				continue
-			}
-
-			// If custom status effect was selected
-			if effectIndex == 0 {
-				fmt.Print("Enter custom status effect name: ")
-				scanner.Scan()
-				effect = scanner.Text()
-			} else {
-				effect = ct.StatusEffects[effectIndex-1]
-			}
-
-			ct.AddStatusEffect(index, effect)
+			handleAddStatusEffect(ct, scanner)
 
 		case "7": // Remove Status Effect
-			var index int
-			var effect string
-
-			fmt.Println("=== REMOVE STATUS EFFECT ===")
-			ct.DisplayCombatState()
-
-			// If combat is active, show current player and use as default
-			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
-				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
-			}
-
-			fmt.Print("Enter combatant number (press Enter for current player): ")
-			scanner.Scan()
-			indexStr := scanner.Text()
-
-			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				// Use current player if no input and combat is active
-				index = ct.CurrentTurnIdx
-			} else {
-				index, _ = strconv.Atoi(indexStr)
-				index-- // Convert to 0-based index
-			}
-
-			// Validate index
-			if index < 0 || index >= len(ct.Combatants) {
-				fmt.Println("Invalid combatant index!")
-				continue
-			}
-
-			// Show current status effects
-			combatant := ct.Combatants[index]
-			if len(combatant.StatusEffects) == 0 {
-				fmt.Printf("%s has no status effects to remove.\n", combatant.Name)
-				continue
-			}
-
-			fmt.Printf("\nCurrent status effects for %s:\n", combatant.Name)
-			for i, effect := range combatant.StatusEffects {
-				fmt.Printf("%d. %s\n", i+1, effect)
-			}
-
-			fmt.Print("\nEnter number of status effect to remove: ")
-			scanner.Scan()
-			effectIndex, err := strconv.Atoi(scanner.Text())
-			if err != nil || effectIndex < 1 || effectIndex > len(combatant.StatusEffects) {
-				fmt.Println("Invalid selection!")
-				continue
-			}
-
-			// Get the effect name from the selected index
-			effect = combatant.StatusEffects[effectIndex-1]
-			ct.RemoveStatusEffect(index, effect)
+			handleRemoveStatusEffect(ct, scanner)
 
 		case "8": // Display Combat State
 			// State is already displayed at top of loop
@@ -825,84 +699,10 @@ func main() {
 			}
 
 		case "13": // Duplicate Combatant
-			var index, count int
-
-			fmt.Println("=== DUPLICATE COMBATANT ===")
-			ct.DisplayCombatState()
-
-			// If combat is active, show current player and use as default
-			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
-				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
-			}
-
-			fmt.Print("Enter combatant number to duplicate (press Enter for current player): ")
-			scanner.Scan()
-			indexStr := scanner.Text()
-
-			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				// Use current player if no input and combat is active
-				index = ct.CurrentTurnIdx
-			} else {
-				index, _ = strconv.Atoi(indexStr)
-				index-- // Convert to 0-based index
-			}
-
-			// Validate index
-			if index < 0 || index >= len(ct.Combatants) {
-				fmt.Println("Invalid combatant index!")
-				continue
-			}
-
-			fmt.Print("Enter number of copies to create: ")
-			scanner.Scan()
-			count, err := strconv.Atoi(scanner.Text())
-			if err != nil || count < 1 {
-				fmt.Println("Invalid number of copies!")
-				continue
-			}
-
-			ct.DuplicateCombatant(index, count)
+			handleDuplicateCombatant(ct, scanner)
 
 		case "14": // Change Initiative
-			var index, newInitiative int
-
-			fmt.Println("=== CHANGE INITIATIVE ===")
-			ct.DisplayCombatState()
-
-			// If combat is active, show current player and use as default
-			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
-				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
-			}
-
-			fmt.Print("Enter combatant number (press Enter for current player): ")
-			scanner.Scan()
-			indexStr := scanner.Text()
-
-			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
-				// Use current player if no input and combat is active
-				index = ct.CurrentTurnIdx
-			} else {
-				index, _ = strconv.Atoi(indexStr)
-				index-- // Convert to 0-based index
-			}
-
-			// Validate index
-			if index < 0 || index >= len(ct.Combatants) {
-				fmt.Println("Invalid combatant index!")
-				continue
-			}
-
-			fmt.Print("Enter new initiative value: ")
-			scanner.Scan()
-			newInitiative, err := strconv.Atoi(scanner.Text())
-			if err != nil {
-				fmt.Println("Invalid initiative value!")
-				continue
-			}
-
-			ct.ChangeInitiative(index, newInitiative)
+			handleChangeInitiative(ct, scanner)
 
 		case "0": // Exit
 			fmt.Println("Exiting D&D Combat Tracker. Farewell, adventurer!")
@@ -919,4 +719,157 @@ func main() {
 			fmt.Println("Invalid command. Please try again.")
 		}
 	}
+}
+
+func handleAdjustHP(ct *CombatTracker, scanner *bufio.Scanner) {
+	displayCommandHeader("Adjust Hit Points")
+	ct.DisplayCombatState()
+
+	index, err := getCurrentOrSelectedIndex(ct, scanner, "")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print("Enter amount (+heal, -damage): ")
+	scanner.Scan()
+	amount, err := strconv.Atoi(scanner.Text())
+	if err != nil {
+		fmt.Println("Invalid amount entered")
+		return
+	}
+
+	ct.AdjustHP(index, amount)
+}
+
+func handleAddTempHP(ct *CombatTracker, scanner *bufio.Scanner) {
+	displayCommandHeader("Add Temporary HP")
+	ct.DisplayCombatState()
+
+	index, err := getCurrentOrSelectedIndex(ct, scanner, "")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print("Enter temporary HP amount: ")
+	scanner.Scan()
+	amount, err := strconv.Atoi(scanner.Text())
+	if err != nil {
+		fmt.Println("Invalid amount entered")
+		return
+	}
+
+	ct.AddTemporaryHP(index, amount)
+}
+
+func handleAddStatusEffect(ct *CombatTracker, scanner *bufio.Scanner) {
+	displayCommandHeader("Add Status Effect")
+	ct.DisplayCombatState()
+
+	index, err := getCurrentOrSelectedIndex(ct, scanner, "")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Printf("\nSelect status effect for %s:\n", ct.Combatants[index].Name)
+	fmt.Println("0. Custom Status Effect")
+	for i, effect := range ct.StatusEffects {
+		fmt.Printf("%d. %s\n", i+1, effect)
+	}
+
+	fmt.Print("\nEnter number of status effect (or 0 for custom): ")
+	scanner.Scan()
+	effectIndex, err := strconv.Atoi(scanner.Text())
+	if err != nil || effectIndex < 0 || effectIndex > len(ct.StatusEffects) {
+		fmt.Println("Invalid selection!")
+		return
+	}
+
+	var effect string
+	if effectIndex == 0 {
+		fmt.Print("Enter custom status effect name: ")
+		scanner.Scan()
+		effect = scanner.Text()
+	} else {
+		effect = ct.StatusEffects[effectIndex-1]
+	}
+
+	ct.AddStatusEffect(index, effect)
+}
+
+func handleRemoveStatusEffect(ct *CombatTracker, scanner *bufio.Scanner) {
+	displayCommandHeader("Remove Status Effect")
+	ct.DisplayCombatState()
+
+	index, err := getCurrentOrSelectedIndex(ct, scanner, "")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	combatant := ct.Combatants[index]
+	if len(combatant.StatusEffects) == 0 {
+		fmt.Printf("%s has no status effects to remove.\n", combatant.Name)
+		return
+	}
+
+	fmt.Printf("\nCurrent status effects for %s:\n", combatant.Name)
+	for i, effect := range combatant.StatusEffects {
+		fmt.Printf("%d. %s\n", i+1, effect)
+	}
+
+	fmt.Print("\nEnter number of status effect to remove: ")
+	scanner.Scan()
+	effectIndex, err := strconv.Atoi(scanner.Text())
+	if err != nil || effectIndex < 1 || effectIndex > len(combatant.StatusEffects) {
+		fmt.Println("Invalid selection!")
+		return
+	}
+
+	effect := combatant.StatusEffects[effectIndex-1]
+	ct.RemoveStatusEffect(index, effect)
+}
+
+func handleDuplicateCombatant(ct *CombatTracker, scanner *bufio.Scanner) {
+	displayCommandHeader("Duplicate Combatant")
+	ct.DisplayCombatState()
+
+	index, err := getCurrentOrSelectedIndex(ct, scanner, "Enter combatant number to duplicate (press Enter for current player): ")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print("Enter number of copies to create: ")
+	scanner.Scan()
+	count, err := strconv.Atoi(scanner.Text())
+	if err != nil || count < 1 {
+		fmt.Println("Invalid number of copies!")
+		return
+	}
+
+	ct.DuplicateCombatant(index, count)
+}
+
+func handleChangeInitiative(ct *CombatTracker, scanner *bufio.Scanner) {
+	displayCommandHeader("Change Initiative")
+	ct.DisplayCombatState()
+
+	index, err := getCurrentOrSelectedIndex(ct, scanner, "")
+	if err != nil {
+		fmt.Println(err)
+		return
+	}
+
+	fmt.Print("Enter new initiative value: ")
+	scanner.Scan()
+	newInitiative, err := strconv.Atoi(scanner.Text())
+	if err != nil {
+		fmt.Println("Invalid initiative value!")
+		return
+	}
+
+	ct.ChangeInitiative(index, newInitiative)
 }
