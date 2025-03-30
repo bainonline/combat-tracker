@@ -32,7 +32,8 @@ type CombatTracker struct {
 	IsActive       bool        `json:"isActive"`
 	CampaignName   string      `json:"campaignName"`
 	EncounterName  string      `json:"encounterName"`
-	SaveFilePath   string      `json:"-"` // Track the save file path but don't include in JSON
+	SaveFilePath   string      `json:"-"`             // Track the save file path but don't include in JSON
+	StatusEffects  []string    `json:"statusEffects"` // List of available status effects
 }
 
 // SaveState represents the full state for saving/loading
@@ -44,6 +45,25 @@ type SaveState struct {
 
 // NewCombatTracker creates a new combat tracker
 func NewCombatTracker() *CombatTracker {
+	// Define default status effects
+	defaultEffects := []string{
+		"Blinded",
+		"Charmed",
+		"Deafened",
+		"Frightened",
+		"Grappled",
+		"Incapacitated",
+		"Invisible",
+		"Paralyzed",
+		"Petrified",
+		"Poisoned",
+		"Prone",
+		"Restrained",
+		"Stunned",
+		"Unconscious",
+		"Custom Status Effect",
+	}
+
 	return &CombatTracker{
 		Combatants:     []Combatant{},
 		Round:          0,
@@ -52,6 +72,7 @@ func NewCombatTracker() *CombatTracker {
 		CampaignName:   "Default Campaign",
 		EncounterName:  "Unknown Encounter",
 		SaveFilePath:   "",
+		StatusEffects:  defaultEffects,
 	}
 }
 
@@ -357,6 +378,30 @@ func LoadFromFile(filename string) (*CombatTracker, error) {
 	// Set the save file path for auto-save
 	saveState.CombatTracker.SaveFilePath = filename
 
+	// If no status effects are present, initialize with defaults
+	if len(saveState.CombatTracker.StatusEffects) == 0 {
+		// Define default status effects
+		defaultEffects := []string{
+			"Blinded",
+			"Charmed",
+			"Deafened",
+			"Frightened",
+			"Grappled",
+			"Incapacitated",
+			"Invisible",
+			"Paralyzed",
+			"Petrified",
+			"Poisoned",
+			"Prone",
+			"Restrained",
+			"Stunned",
+			"Unconscious",
+			"Custom Status Effect",
+		}
+		saveState.CombatTracker.StatusEffects = defaultEffects
+		fmt.Println("Initialized default status effects list.")
+	}
+
 	fmt.Printf("Loaded save from: %s\n", saveState.SaveTime)
 	return &saveState.CombatTracker, nil
 }
@@ -461,10 +506,25 @@ func main() {
 			var index, amount int
 
 			fmt.Println("=== ADJUST HIT POINTS ===")
-			fmt.Print("Enter combatant number: ")
+			ct.DisplayCombatState()
+
+			// If combat is active, show current player and use as default
+			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
+				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
+			}
+
+			fmt.Print("Enter combatant number (press Enter for current player): ")
 			scanner.Scan()
-			index, _ = strconv.Atoi(scanner.Text())
-			index-- // Convert to 0-based index
+			indexStr := scanner.Text()
+
+			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				// Use current player if no input and combat is active
+				index = ct.CurrentTurnIdx
+			} else {
+				index, _ = strconv.Atoi(indexStr)
+				index-- // Convert to 0-based index
+			}
 
 			fmt.Print("Enter amount (+heal, -damage): ")
 			scanner.Scan()
@@ -476,10 +536,31 @@ func main() {
 			var index, amount int
 
 			fmt.Println("=== ADD TEMPORARY HP ===")
-			fmt.Print("Enter combatant number: ")
+			ct.DisplayCombatState()
+
+			// If combat is active, show current player and use as default
+			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
+				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
+			}
+
+			fmt.Print("Enter combatant number (press Enter for current player): ")
 			scanner.Scan()
-			index, _ = strconv.Atoi(scanner.Text())
-			index-- // Convert to 0-based index
+			indexStr := scanner.Text()
+
+			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				// Use current player if no input and combat is active
+				index = ct.CurrentTurnIdx
+			} else {
+				index, _ = strconv.Atoi(indexStr)
+				index-- // Convert to 0-based index
+			}
+
+			// Validate index
+			if index < 0 || index >= len(ct.Combatants) {
+				fmt.Println("Invalid combatant index!")
+				continue
+			}
 
 			fmt.Print("Enter temporary HP amount: ")
 			scanner.Scan()
@@ -492,14 +573,54 @@ func main() {
 			var effect string
 
 			fmt.Println("=== ADD STATUS EFFECT ===")
-			fmt.Print("Enter combatant number: ")
-			scanner.Scan()
-			index, _ = strconv.Atoi(scanner.Text())
-			index-- // Convert to 0-based index
+			ct.DisplayCombatState()
 
-			fmt.Print("Enter status effect (e.g., Stunned, Poisoned): ")
+			// If combat is active, show current player and use as default
+			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
+				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
+			}
+
+			fmt.Print("Enter combatant number (press Enter for current player): ")
 			scanner.Scan()
-			effect = scanner.Text()
+			indexStr := scanner.Text()
+
+			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				// Use current player if no input and combat is active
+				index = ct.CurrentTurnIdx
+			} else {
+				index, _ = strconv.Atoi(indexStr)
+				index-- // Convert to 0-based index
+			}
+
+			// Validate index
+			if index < 0 || index >= len(ct.Combatants) {
+				fmt.Println("Invalid combatant index!")
+				continue
+			}
+
+			fmt.Printf("\nSelect status effect for %s:\n", ct.Combatants[index].Name)
+			fmt.Println("0. Custom Status Effect")
+			for i, effect := range ct.StatusEffects {
+				fmt.Printf("%d. %s\n", i+1, effect)
+			}
+
+			fmt.Print("\nEnter number of status effect (or 0 for custom): ")
+			scanner.Scan()
+			effectIndex, err := strconv.Atoi(scanner.Text())
+			if err != nil || effectIndex < 0 || effectIndex > len(ct.StatusEffects) {
+				fmt.Println("Invalid selection!")
+				continue
+			}
+
+			// If custom status effect was selected
+			if effectIndex == 0 {
+				fmt.Print("Enter custom status effect name: ")
+				scanner.Scan()
+				effect = scanner.Text()
+			} else {
+				effect = ct.StatusEffects[effectIndex-1]
+			}
 
 			ct.AddStatusEffect(index, effect)
 
@@ -508,15 +629,54 @@ func main() {
 			var effect string
 
 			fmt.Println("=== REMOVE STATUS EFFECT ===")
-			fmt.Print("Enter combatant number: ")
-			scanner.Scan()
-			index, _ = strconv.Atoi(scanner.Text())
-			index-- // Convert to 0-based index
+			ct.DisplayCombatState()
 
-			fmt.Print("Enter status effect to remove: ")
-			scanner.Scan()
-			effect = scanner.Text()
+			// If combat is active, show current player and use as default
+			if ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				currentPlayer := ct.Combatants[ct.CurrentTurnIdx]
+				fmt.Printf("Current player: %s (index: %d)\n", currentPlayer.Name, ct.CurrentTurnIdx+1)
+			}
 
+			fmt.Print("Enter combatant number (press Enter for current player): ")
+			scanner.Scan()
+			indexStr := scanner.Text()
+
+			if indexStr == "" && ct.IsActive && ct.CurrentTurnIdx >= 0 {
+				// Use current player if no input and combat is active
+				index = ct.CurrentTurnIdx
+			} else {
+				index, _ = strconv.Atoi(indexStr)
+				index-- // Convert to 0-based index
+			}
+
+			// Validate index
+			if index < 0 || index >= len(ct.Combatants) {
+				fmt.Println("Invalid combatant index!")
+				continue
+			}
+
+			// Show current status effects
+			combatant := ct.Combatants[index]
+			if len(combatant.StatusEffects) == 0 {
+				fmt.Printf("%s has no status effects to remove.\n", combatant.Name)
+				continue
+			}
+
+			fmt.Printf("\nCurrent status effects for %s:\n", combatant.Name)
+			for i, effect := range combatant.StatusEffects {
+				fmt.Printf("%d. %s\n", i+1, effect)
+			}
+
+			fmt.Print("\nEnter number of status effect to remove: ")
+			scanner.Scan()
+			effectIndex, err := strconv.Atoi(scanner.Text())
+			if err != nil || effectIndex < 1 || effectIndex > len(combatant.StatusEffects) {
+				fmt.Println("Invalid selection!")
+				continue
+			}
+
+			// Get the effect name from the selected index
+			effect = combatant.StatusEffects[effectIndex-1]
 			ct.RemoveStatusEffect(index, effect)
 
 		case "8": // Display Combat State
