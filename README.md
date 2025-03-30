@@ -143,3 +143,143 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 Here's an example of how to use each command in a typical combat session:
 
 ### 1. Adding Combatants
+
+```
+Enter command: 1
+=== ADD COMBATANT ===
+Enter name: Thorin
+Enter initiative: 18
+Enter max HP: 85
+Is this a player? (y/n): y
+Added Thorin to combat with initiative 18 and 85 HP
+```
+
+### 2. Starting Combat
+```
+Enter command: 2
+===== COMBAT BEGINS =====
+Round 1
+It's Thorin's turn!
+```
+
+### 3. Next Turn
+```
+Enter command: 3
+It's Orc Warrior's turn!
+```
+
+### 4. Adjusting HP
+```
+Enter command: 4
+=== ADJUST HIT POINTS ===
+Current player: Thorin (index: 1)
+Enter amount (+heal, -damage): -12
+Thorin HP: 73/85
+```
+
+### 5. Adding Temporary HP
+```
+Enter command: 5
+=== ADD TEMPORARY HP ===
+Current player: Thorin (index: 1)
+Enter temporary HP amount: 8
+Thorin now has 8 temporary hit points!
+```
+
+### 6. Adding Status Effect
+```
+Enter command: 6
+=== ADD STATUS EFFECT ===
+Current player: Thorin (index: 1)
+Select status effect for Thorin:
+1. Blinded
+2. Charmed
+...
+Enter number of status effect (or 0 for custom): 1
+Thorin is now affected by: Blinded
+```
+
+### 7. Removing Status Effect
+```
+Enter command: 7
+=== REMOVE STATUS EFFECT ===
+Current player: Thorin (index: 1)
+Current status effects for Thorin:
+1. Blinded
+Enter number of status effect to remove: 1
+Thorin is no longer affected by: Blinded
+```
+
+### 8. Displaying Combat State
+```
+Enter command: 8
+===== COMBAT STATE =====
+Campaign: Lost Mine of Phandelver | Encounter: Mountain Pass
+Round: 2
+-------------------
+→ P 1. Thorin             Init: 18 HP: 73/85 (Temp: 8)
+  M 2. Orc Warrior        Init: 15 HP: 45/45
+  M 3. Goblin Scout       Init: 12 HP: 25/25
+-------------------
+```
+
+### 9. Ending Combat
+```
+Enter command: 9
+===== COMBAT ENDED =====
+```
+
+### 10. Setting Encounter Details
+```
+Enter command: 10
+=== SET ENCOUNTER DETAILS ===
+Enter campaign name: Lost Mine of Phandelver
+Enter encounter name: Mountain Pass
+Set encounter details - Campaign: Lost Mine of Phandelver, Encounter: Mountain Pass
+```
+
+### 11. Saving Combat State
+```
+Enter command: 11
+=== SAVE COMBAT STATE ===
+Enter filename (default: combat_Lost_Mine_of_Phandelver_Mountain_Pass_2024-01-20_15-30-45.json):
+Combat state saved to combat_Lost_Mine_of_Phandelver_Mountain_Pass_2024-01-20_15-30-45.json
+```
+
+### 12. Loading Combat State
+```
+Enter command: 12
+=== LOAD COMBAT STATE ===
+Enter filename to load: previous_combat.json
+Combat state loaded successfully!
+```
+
+### 13. Duplicating Combatants
+```
+Enter command: 13
+=== DUPLICATE COMBATANT ===
+Enter combatant number to duplicate: 2
+Enter number of copies to create: 3
+Created Orc Warrior2
+Created Orc Warrior3
+Created Orc Warrior4
+```
+
+### 14. Changing Initiative
+```
+Enter command: 14
+=== CHANGE INITIATIVE ===
+Current player: Thorin (index: 1)
+Enter new initiative value: 20
+Thorin's initiative changed from 18 to 20
+Combat order updated.
+```
+
+### 0. Exiting the Program
+```
+Enter command: 0
+Exiting D&D Combat Tracker. Farewell, adventurer!
+Performing final save to autosave.json before exit.
+```
+
+Note: For most commands that require selecting a combatant, pressing Enter without a number will default to the current turn's combatant.
